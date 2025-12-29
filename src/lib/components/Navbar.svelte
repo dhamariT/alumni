@@ -14,18 +14,17 @@
 			{#if user}
 				<div class="flex items-center gap-6">
 					<a href="/home" class="text-gray-600 hover:text-gray-900 transition-colors">Home</a>
-					<a href="/profile" class="text-gray-600 hover:text-gray-900 transition-colors">Profile</a>
 					<a href="/auth/logout" class="text-red-500 hover:text-red-600 transition-colors">
 						Sign out
 					</a>
-					<div class="flex items-center gap-2">
+					<a href="/profile" class="flex items-center gap-2 hover:opacity-80 transition-opacity">
 						<img
 							src={profile?.profile_picture ?? '/default-avatar.jpg'}
 							alt="Profile"
 							class="w-8 h-8 rounded-full object-cover"
 						/>
 						<span class="text-gray-700 font-medium">{profile?.first_name ?? ''}</span>
-					</div>
+					</a>
 				</div>
 			{/if}
 		</div>
