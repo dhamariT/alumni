@@ -13,7 +13,7 @@ export const GET: RequestHandler = async () => {
 		client_id: PUBLIC_HC_OAUTH_CLIENT_ID,
 		redirect_uri: PUBLIC_HC_OAUTH_REDIRECT_URL,
 		response_type: PUBLIC_HC_OAUTH_RESPONSE_TYPE,
-		scope: 'openid profile email slack_id verification_status'
+		scope: 'openid profile email slack_id'
 	});
 
 	redirect(302, `${AUTH_URL}?${params.toString()}`);

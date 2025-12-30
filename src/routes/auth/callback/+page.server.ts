@@ -8,6 +8,7 @@ import {
 import { PUBLIC_HC_OAUTH_CLIENT_ID, PUBLIC_HC_OAUTH_REDIRECT_URL } from '$env/static/public';
 import type { PageServerLoad } from './$types';
 import { createCipheriv, randomBytes } from 'crypto';
+import { getIDVMe } from '$lib/server/idv';
 
 function hashUserID(userID: string): string {
 	const iv = randomBytes(16);
@@ -112,21 +113,17 @@ export const load: PageServerLoad = async ({ url, cookies }) => {
 			redirect(302, '/');
 		}
 
-		const userinfoResponse = await fetch('https://auth.hackclub.com/oauth/userinfo', {
-			headers: {
-				Authorization: `Bearer ${accessToken}`
-			}
-		});
+		let birthdate: string | undefined;
+		let idvData: Awaited<ReturnType<typeof getIDVMe>> | null = null;
 
-		if (!userinfoResponse.ok) {
-			console.error('Failed to fetch userinfo');
-			redirect(302, '/');
+		try {
+			idvData = await getIDVMe(accessToken);
+			console.log('IDV me response:', idvData);
+			birthdate = idvData.identity.birthday;
+		} catch (e) {
+			console.error('Failed to fetch IDV /api/v1/me:', e);
+			redirect(302, '/?error=' + encodeURIComponent('Failed to verify your identity.'));
 		}
-
-		const userinfo = await userinfoResponse.json();
-		console.log('OIDC userinfo:', userinfo);
-
-		const birthdate = userinfo.birthdate as string | undefined;
 
 		if (!birthdate) {
 			console.error('No birthdate in userinfo');
@@ -186,7 +183,7 @@ export const load: PageServerLoad = async ({ url, cookies }) => {
 					linkedin: '',
 					personal_site: '',
 					birthdate: birthdate,
-					ysws_eligible: claims.ysws_eligible ? 'true' : 'false',
+					ysws_eligible: idvData?.identity.ysws_eligible ? 'true' : 'false',
 					city: '',
 					state: '',
 					country: '',
@@ -242,8 +239,8 @@ export const load: PageServerLoad = async ({ url, cookies }) => {
 						second_name: (claims.family_name as string) || '',
 						email: (claims.email as string) || '',
 						slack_id: slackId,
-						ysws_eligible: claims.ysws_eligible ? 'true' : 'false'
-					})
+						ysws_eligible: idvData?.identity.ysws_eligible ? 'true' : 'false'
+						})
 				});
 
 				if (!patchResponse.ok) {
