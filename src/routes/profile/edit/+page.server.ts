@@ -1,6 +1,13 @@
 import type { Actions, PageServerLoad } from './$types';
 import { redirect, fail } from '@sveltejs/kit';
-import { getUser, updateUser } from '$lib/server/api';
+import {
+	getUser,
+	updateUser,
+	getOrCreateCompany,
+	createEmployment,
+	updateEmployment,
+	deleteEmployment
+} from '$lib/server/api';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	if (!locals.user) {
@@ -38,8 +45,6 @@ export const actions: Actions = {
 			city: formData.get('city') as string,
 			state: formData.get('state') as string,
 			country: formData.get('country') as string,
-			position: formData.get('position') as string,
-			company: formData.get('company') as string,
 			phone_number: formData.get('phone_number') as string
 		};
 
@@ -47,6 +52,110 @@ export const actions: Actions = {
 
 		if (!response.ok) {
 			return fail(400, { error: 'Failed to update profile' });
+		}
+
+		return { success: true };
+	},
+
+	addEmployment: async ({ request, locals }) => {
+		if (!locals.user) {
+			return fail(401, { error: 'Unauthorized' });
+		}
+
+		const formData = await request.formData();
+		const companyName = formData.get('company_name') as string;
+		const title = formData.get('title') as string;
+		const startDate = formData.get('start_date') as string;
+		const endDate = formData.get('end_date') as string;
+		const isCurrent = formData.get('is_current') === 'on';
+
+		if (!companyName || !title) {
+			return fail(400, { error: 'Company name and title are required' });
+		}
+
+		const company = await getOrCreateCompany(companyName);
+		if (!company) {
+			return fail(400, { error: 'Failed to create or find company' });
+		}
+
+		const employment = await createEmployment({
+			user_id: locals.user.id,
+			company_id: company.company_id,
+			title,
+			start_date: startDate || undefined,
+			end_date: isCurrent ? undefined : endDate || undefined,
+			is_current: isCurrent
+		});
+
+		if (!employment) {
+			return fail(400, { error: 'Failed to add employment' });
+		}
+
+		return { success: true };
+	},
+
+	updateEmployment: async ({ request, locals }) => {
+		if (!locals.user) {
+			return fail(401, { error: 'Unauthorized' });
+		}
+
+		const formData = await request.formData();
+		const employmentId = formData.get('employment_id') as string;
+		const companyName = formData.get('company_name') as string;
+		const title = formData.get('title') as string;
+		const startDate = formData.get('start_date') as string;
+		const endDate = formData.get('end_date') as string;
+		const isCurrent = formData.get('is_current') === 'on';
+
+		if (!employmentId) {
+			return fail(400, { error: 'Employment ID is required' });
+		}
+
+		const updateData: Record<string, unknown> = {};
+
+		if (title) {
+			updateData.title = title;
+		}
+
+		if (companyName) {
+			const company = await getOrCreateCompany(companyName);
+			if (company) {
+				updateData.company_id = company.company_id;
+			}
+		}
+
+		if (startDate) {
+			updateData.start_date = startDate;
+		}
+
+		updateData.is_current = isCurrent;
+		updateData.end_date = isCurrent ? null : endDate || null;
+
+		const employment = await updateEmployment(employmentId, updateData);
+
+		if (!employment) {
+			return fail(400, { error: 'Failed to update employment' });
+		}
+
+		return { success: true };
+	},
+
+	deleteEmployment: async ({ request, locals }) => {
+		if (!locals.user) {
+			return fail(401, { error: 'Unauthorized' });
+		}
+
+		const formData = await request.formData();
+		const employmentId = formData.get('employment_id') as string;
+
+		if (!employmentId) {
+			return fail(400, { error: 'Employment ID is required' });
+		}
+
+		const success = await deleteEmployment(employmentId);
+
+		if (!success) {
+			return fail(400, { error: 'Failed to delete employment' });
 		}
 
 		return { success: true };

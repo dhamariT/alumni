@@ -2,6 +2,7 @@
 	import { enhance } from '$app/forms';
 	import Navbar from '$lib/components/Navbar.svelte';
 	import type { PageData, ActionData } from './$types';
+	import type { Employment } from '$lib/types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -10,6 +11,8 @@
 	let pictureFormRef = $state<HTMLFormElement | null>(null);
 	let fileSizeError = $state<string | null>(null);
 	let isSavingPicture = $state(false);
+	let showAddEmployment = $state(false);
+	let editingEmploymentId = $state<string | null>(null);
 
 	const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
 
@@ -43,6 +46,15 @@
 
 	function handlePictureFormResult() {
 		isSavingPicture = false;
+	}
+
+	function formatDate(dateStr: string | null): string {
+		if (!dateStr) return '';
+		return dateStr.split('T')[0];
+	}
+
+	function getCurrentJob(employments: Employment[]): Employment | null {
+		return employments.find(e => e.is_current) ?? null;
 	}
 </script>
 
@@ -253,37 +265,6 @@
 			</div>
 		</div>
 
-		<hr class="border-gray-200" />
-		<h2 class="text-xl font-semibold text-gray-800">Work</h2>
-
-		<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-			<div>
-				<label for="position" class="block text-sm font-medium text-gray-700 mb-1">Position</label>
-				<input
-					type="text"
-					id="position"
-					name="position"
-					bind:value={profile.position}
-					class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-				/>
-			</div>
-
-			<div>
-				<label for="company" class="block text-sm font-medium text-gray-700 mb-1">Company</label>
-				<input
-					type="text"
-					id="company"
-					name="company"
-					bind:value={profile.company}
-					class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-				/>
-			</div>
-		</div>
-
-		<hr class="border-gray-200" />
-		
-
-
 		<div class="pt-4">
 			<button
 				type="submit"
@@ -293,4 +274,195 @@
 			</button>
 		</div>
 	</form>
+
+	<hr class="border-gray-200 my-8" />
+	<h2 class="text-xl font-semibold text-gray-800 mb-4">Work Experience</h2>
+
+	{#if profile.employments && profile.employments.length > 0}
+		<div class="space-y-4 mb-6">
+			{#each profile.employments as employment}
+				<div class="border border-gray-200 rounded-lg p-4">
+					{#if editingEmploymentId === employment.employment_id}
+						<form method="POST" action="?/updateEmployment" use:enhance={() => {
+							return async ({ update }) => {
+								editingEmploymentId = null;
+								await update();
+							};
+						}}>
+							<input type="hidden" name="employment_id" value={employment.employment_id} />
+							<div class="space-y-4">
+								<div>
+									<label class="block text-sm font-medium text-gray-700 mb-1">Company</label>
+									<input
+										type="text"
+										name="company_name"
+										value={employment.company.name}
+										class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+									/>
+								</div>
+								<div>
+									<label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
+									<input
+										type="text"
+										name="title"
+										value={employment.title}
+										class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+									/>
+								</div>
+								<div class="grid grid-cols-2 gap-4">
+									<div>
+										<label class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+										<input
+											type="date"
+											name="start_date"
+											value={formatDate(employment.start_date)}
+											class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+										/>
+									</div>
+									<div>
+										<label class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+										<input
+											type="date"
+											name="end_date"
+											value={formatDate(employment.end_date)}
+											disabled={employment.is_current}
+											class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 disabled:bg-gray-100"
+										/>
+									</div>
+								</div>
+								<div class="flex items-center gap-2">
+									<input
+										type="checkbox"
+										name="is_current"
+										id="edit_is_current_{employment.employment_id}"
+										checked={employment.is_current}
+										class="rounded border-gray-300 text-red-500 focus:ring-red-500"
+									/>
+									<label for="edit_is_current_{employment.employment_id}" class="text-sm text-gray-700">Current position</label>
+								</div>
+								<div class="flex gap-2">
+									<button type="submit" class="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600">
+										Save
+									</button>
+									<button type="button" onclick={() => editingEmploymentId = null} class="bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300">
+										Cancel
+									</button>
+								</div>
+							</div>
+						</form>
+					{:else}
+						<div class="flex justify-between items-start">
+							<div>
+								<h3 class="font-semibold text-gray-900">{employment.title}</h3>
+								<p class="text-gray-600">{employment.company.name}</p>
+								<p class="text-sm text-gray-500">
+									{#if employment.start_date}
+										{new Date(employment.start_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+									{/if}
+									{#if employment.start_date && (employment.end_date || employment.is_current)}
+										–
+									{/if}
+									{#if employment.is_current}
+										Present
+									{:else if employment.end_date}
+										{new Date(employment.end_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+									{/if}
+								</p>
+							</div>
+							<div class="flex gap-2">
+								<button
+									onclick={() => editingEmploymentId = employment.employment_id}
+									class="text-gray-500 hover:text-gray-700"
+								>
+									Edit
+								</button>
+								<form method="POST" action="?/deleteEmployment" use:enhance>
+									<input type="hidden" name="employment_id" value={employment.employment_id} />
+									<button type="submit" class="text-red-500 hover:text-red-700">
+										Delete
+									</button>
+								</form>
+							</div>
+						</div>
+					{/if}
+				</div>
+			{/each}
+		</div>
+	{:else}
+		<p class="text-gray-500 mb-4">No work experience added yet.</p>
+	{/if}
+
+	{#if showAddEmployment}
+		<form method="POST" action="?/addEmployment" class="border border-gray-200 rounded-lg p-4 space-y-4" use:enhance={() => {
+			return async ({ update }) => {
+				showAddEmployment = false;
+				await update();
+			};
+		}}>
+			<div>
+				<label for="new_company_name" class="block text-sm font-medium text-gray-700 mb-1">Company</label>
+				<input
+					type="text"
+					id="new_company_name"
+					name="company_name"
+					required
+					class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+				/>
+			</div>
+			<div>
+				<label for="new_title" class="block text-sm font-medium text-gray-700 mb-1">Title</label>
+				<input
+					type="text"
+					id="new_title"
+					name="title"
+					required
+					class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+				/>
+			</div>
+			<div class="grid grid-cols-2 gap-4">
+				<div>
+					<label for="new_start_date" class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+					<input
+						type="date"
+						id="new_start_date"
+						name="start_date"
+						class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+					/>
+				</div>
+				<div>
+					<label for="new_end_date" class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+					<input
+						type="date"
+						id="new_end_date"
+						name="end_date"
+						class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+					/>
+				</div>
+			</div>
+			<div class="flex items-center gap-2">
+				<input
+					type="checkbox"
+					name="is_current"
+					id="new_is_current"
+					class="rounded border-gray-300 text-red-500 focus:ring-red-500"
+				/>
+				<label for="new_is_current" class="text-sm text-gray-700">This is my current position</label>
+			</div>
+			<div class="flex gap-2">
+				<button type="submit" class="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600">
+					Add Employment
+				</button>
+				<button type="button" onclick={() => showAddEmployment = false} class="bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300">
+					Cancel
+				</button>
+			</div>
+		</form>
+	{:else}
+		<button
+			onclick={() => showAddEmployment = true}
+			class="w-full border-2 border-dashed border-gray-300 rounded-lg p-4 text-gray-500 hover:border-gray-400 hover:text-gray-600 transition-colors"
+		>
+			+ Add Work Experience
+		</button>
+	{/if}
 </main>

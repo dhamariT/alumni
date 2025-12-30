@@ -119,8 +119,6 @@ export const load: PageServerLoad = async ({ url, cookies }) => {
 					city: '',
 					state: '',
 					country: '',
-					position: '',
-					company: '',
 					ex_hq: false,
 					phone_number: ''
 				})

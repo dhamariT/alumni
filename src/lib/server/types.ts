@@ -4,6 +4,23 @@ export type SessionUser = {
 	email: string | null;
 };
 
+export type Company = {
+	company_id: string;
+	name: string;
+	website: string | null;
+};
+
+export type Employment = {
+	employment_id: string;
+	user_id: string;
+	company_id: string;
+	title: string;
+	start_date: string | null;
+	end_date: string | null;
+	is_current: boolean;
+	company: Company;
+};
+
 export type UserProfile = {
 	first_name: string;
 	second_name: string;
@@ -21,9 +38,8 @@ export type UserProfile = {
 	city: string | null;
 	state: string | null;
 	country: string | null;
-	position: string | null;
-	company: string | null;
 	ex_hq: boolean;
 	phone_number: string | null;
 	profile_picture: string | null;
+	employments: Employment[];
 };
